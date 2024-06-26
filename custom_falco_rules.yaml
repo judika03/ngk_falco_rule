@@ -1,2 +1,10 @@
 - list: falco_binaries
   items: [falcoctl]
+
+- rule: Potential Reverse Shell
+  desc: Detect potential reverse shell.
+  condition: dup and evt.rawres in (0, 1, 2) and fd.type in ("ipv4", "ipv6") and not user_known_stand_streams_redirect_activities
+  output: >
+    Potential Reverse Shell Command %proc.cmdline (user=%user.name user_loginuid=%user.loginuid process=%proc.name parent=%proc.pname cmdline=%proc.cmdline pid=%proc.pid terminal=%proc.tty fd.name=%fd.name fd.num=%fd.num fd.type=%fd.type fd.sip=%fd.sip)
+  priority: CRITICAL
+  tags: [network, process, mitre_discovery, mitre_execution, T1059]
