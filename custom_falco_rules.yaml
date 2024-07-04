@@ -8,3 +8,75 @@
     Potential Reverse Shell Command %proc.cmdline (user=%user.name user_loginuid=%user.loginuid process=%proc.name parent=%proc.pname cmdline=%proc.cmdline pid=%proc.pid terminal=%proc.tty fd.name=%fd.name fd.num=%fd.num fd.type=%fd.type fd.sip=%fd.sip)
   priority: CRITICAL
   tags: [network, process, mitre_discovery, mitre_execution, T1059]
+
+- list: ssh_files
+  items: [/etc/ssh/sshd_config, /.ssh/authorized_keys]
+
+- rule: Account Manipulation in SSH
+  desc: an attempt to do account manipulation using ssh
+
+  condition: >
+    ((open_read and (fd.name in (ssh_files)))
+    or (open_write and (fd.name in (ssh_files))))
+  enabled: true
+  output: >
+    A process with process id=%proc.pid is spawned to do account manipulation
+    at ssh_files
+  priority: ERROR
+  tags: [host, container, account, mitre_discovery, account_manipulation, T1098]
+
+- list: encryption_proc
+  items: ["zip", "tar", "gzip", "bzip2"]
+
+- rule: Archive and Compression Activity
+  desc: Detects archive and compression activity using tar, zip, gzip, and bzip2.
+  condition: >
+    spawned_process and
+    ((proc.name in (encryption_proc)) and
+    (evt.dir = "<" or evt.arg[1] = "-czf" or evt.arg[1] = "-cpf"))
+  enabled: true
+  output: >
+    "Archive and compression activity detected (proc.cmdline=%proc.cmdline connection=%fd.name user.name=%user.name user.loginuid=%user.loginuid container.id=%container.id evt.type=%evt.type     evt.res=%evt.res proc.pid=%proc.pid proc.cwd=%proc.cwd proc.ppid=%proc.ppid proc.pcmdline=%proc.pcmdline proc.sid=%proc.sid proc.exepath=%proc.exepath user.uid=%user.uid user.loginname=%user.loginname group.gid=%group.gid group.name=%group.name container.name=%container.name image=%container.image.repository)"
+  priority: WARNING
+  tags: [host, container, data, mitre_collection, archive_collected_data, T1560]
+
+- rule: Suspicious Disk Activity
+  desc: Detects suspicious disk activity such as wiping, overwriting or corrupting raw disk data.
+  condition: spawned_process and (proc.name in ("dd", "shred", "hdparm", "fdisk", "blkdiscard", "wipe", "badblocks", "fsck", "parted", "mkfs.ext4"))
+  enabled: true
+  output: "Suspicious disk activity (command=%proc.cmdline) detected"
+  priority: WARNING
+  tags: [host, container, disk, mitre_impact, disk_wipe, T1561]
+
+- rule: Process Injection
+  desc: "This rule detects an attempt to inject code into a process using PTRACE."
+  condition: evt.type=ptrace and evt.dir=> and evt.arg.request in (5, 6, 11, 20, 27) and proc_name_exists and not known_ptrace_procs
+  enabled: true
+  output: A process is injected in to a known process binary to execute
+  priority: WARNING
+  tags: [host, container, process, mitre_priviledge_escalation, process_injection, T1055]
+
+- rule: Suspicious Network Scanning Command
+  desc: Detects suspicious network scanning commands
+  condition: evt.type = execve and
+    (proc.name=nmap or proc.name=dig or
+     proc.name=nslookup or proc.name=arp) and
+    (
+      proc.args contains "-sP" or
+      proc.args contains "-c" or
+      proc.args contains "+short" or
+      proc.args contains "-a"
+    )
+  enabled: true
+  output: Suspicious network scanning command executed
+   (user=%user.name command=%proc.cmdline)
+  priority: WARNING
+  tags: [host, container, network, mitre_discovery, remote_system_discovery, T1018]
+
+- rule: Suspicious Time and Date Command Execution
+  desc: Detects the execution of commands that may be used to gather time, date, and region information
+  condition: evt.type = execve and evt.dir = < and (proc.name = "date" or proc.name = "timedatectl" or proc.name = "locale" or proc.name = "hostnamectl")
+  enabled: true
+  output: "Suspicious time and date command executed: user=%user.name pid=%proc.pid ppid=%proc.ppid exe=%proc.exepath cmdline=%proc.cmdline"
+  priority: WARNING
+  tags: [host, container, time, date, mitre_discovery, system_time_discovery, T1124]
