@@ -21,6 +21,8 @@ jobs:
       # Assuming we are in the main branch, our OCI artifact will
       # look something like ghcr.io/user/repo/custom-rules:main
       OCI_ARTIFACT_NAME: custom-rules
+      VERSION: ${GITHUB_REF_NAME#v}
+      VERSION1: ${VERSION}
       OCI_ARTIFACT_VERSION: ${{ github.ref_name }}
 
     steps:
