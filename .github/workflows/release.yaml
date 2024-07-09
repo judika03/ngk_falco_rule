@@ -49,8 +49,6 @@ jobs:
           echo Version: $VERSION
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Read version
-        run: echo Version now: ${VERSION}     
 
       - name: Upload OCI artifacts to GitHub packages
         run: |
