@@ -1,5 +1,8 @@
 name: Release Rulesfile for scenario 1
-on: push
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
 
